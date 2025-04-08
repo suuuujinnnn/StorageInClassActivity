@@ -34,39 +34,60 @@ class MainActivity : AppCompatActivity() {
 
         requestQueue = Volley.newRequestQueue(this)
 
-        titleTextView = findViewById<TextView>(R.id.comicTitleTextView)
-        descriptionTextView = findViewById<TextView>(R.id.comicDescriptionTextView)
-        numberEditText = findViewById<EditText>(R.id.comicNumberEditText)
-        showButton = findViewById<Button>(R.id.showComicButton)
-        comicImageView = findViewById<ImageView>(R.id.comicImageView)
+        titleTextView = findViewById(R.id.comicTitleTextView)
+        descriptionTextView = findViewById(R.id.comicDescriptionTextView)
+        numberEditText = findViewById(R.id.comicNumberEditText)
+        showButton = findViewById(R.id.showComicButton)
+        comicImageView = findViewById(R.id.comicImageView)
 
         showButton.setOnClickListener {
             downloadComic(numberEditText.text.toString())
         }
 
+        loadSavedComic()
     }
 
     // Fetches comic from web as JSONObject
-    private fun downloadComic (comicId: String) {
+    private fun downloadComic(comicId: String) {
         val url = "https://xkcd.com/$comicId/info.0.json"
-        requestQueue.add (
-            JsonObjectRequest(url
-                , {showComic(it)}
-                , {}
-            )
+        val jsonObjectRequest = JsonObjectRequest(
+            Request.Method.GET, url, null,
+            { response -> showComic(response) },
+            { error ->
+                Toast.makeText(this, "Error fetching comic: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
         )
+        requestQueue.add(jsonObjectRequest)
     }
 
     // Display a comic for a given comic JSON object
-    private fun showComic (comicObject: JSONObject) {
+    private fun showComic(comicObject: JSONObject) {
         titleTextView.text = comicObject.getString("title")
         descriptionTextView.text = comicObject.getString("alt")
         Picasso.get().load(comicObject.getString("img")).into(comicImageView)
+        saveComic(comicObject)
     }
+
 
     // Implement this function
     private fun saveComic(comicObject: JSONObject) {
+        val sharedPreferences = getSharedPreferences("comics", MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString("saved_comic", comicObject.toString())
+        editor.apply()
+        Toast.makeText(this, "Comic saved!", Toast.LENGTH_SHORT).show()
+    }
 
+    private fun loadSavedComic() {
+        val sharedPreferences = getSharedPreferences("comics", MODE_PRIVATE)
+        val savedComicString = sharedPreferences.getString("saved_comic", null)
+
+        if (savedComicString != null) {
+            val savedComic = JSONObject(savedComicString)
+            showComic(savedComic)
+        } else {
+            Toast.makeText(this, "No saved comic found!", Toast.LENGTH_SHORT).show()
+        }
     }
 
 
